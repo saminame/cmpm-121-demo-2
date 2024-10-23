@@ -5,7 +5,7 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 
 document.title = APP_NAME;
 // Step 1: Initial non-interactive UI layout
-//Step 2: Simple marker drawing
+// Step 2: Simple marker drawing
 app.innerHTML = `<h1>${APP_NAME}</h1><canvas id="gameCanvas" width="256" height="256"></canvas><button id="clearButton">Clear</button>`;
 
 const canvas = document.getElementById("gameCanvas") as HTMLCanvasElement;
