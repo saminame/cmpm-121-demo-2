@@ -14,7 +14,7 @@ app.innerHTML = `<h1>${APP_NAME}</h1>
   <button id="thickButton">Thick Marker</button>
 </div>`;
 
-// Step 6: Multiple markers
+// Step 7: Tool preview
 const canvas = document.getElementById("gameCanvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
 const drawingData: MarkerLine[] = [];
@@ -22,6 +22,7 @@ const redoStack: MarkerLine[] = [];
 let currentLine: MarkerLine | null = null;
 let drawing = false;
 let lineWidth = 2;
+let toolPreview: ToolPreview | null = null;
 
 class MarkerLine {
   private points: { x: number; y: number }[] = [];
@@ -49,6 +50,30 @@ class MarkerLine {
   }
 }
 
+class ToolPreview {
+  private x: number;
+  private y: number;
+  private width: number;
+
+  constructor(x: number, y: number, width: number) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+  }
+
+  updatePosition(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.width / 2, 0, 2 * Math.PI);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fill();
+  }
+}
+
 if (ctx) {
   canvas.addEventListener("mousedown", (event) => {
     drawing = true;
@@ -58,6 +83,7 @@ if (ctx) {
     currentLine = new MarkerLine(x, y, lineWidth);
     drawingData.push(currentLine);
     redoStack.length = 0; // Clear redo stack when new drawing starts
+    toolPreview = null;
   });
 
   canvas.addEventListener("mouseup", () => {
@@ -67,13 +93,17 @@ if (ctx) {
   });
 
   canvas.addEventListener("mousemove", (event) => {
-    if (!drawing || !currentLine) return;
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    currentLine.drag(x, y);
-    canvas.dispatchEvent(new Event("drawing-changed"));
+    if (drawing && currentLine) {
+      currentLine.drag(x, y);
+      canvas.dispatchEvent(new Event("drawing-changed"));
+    } else {
+      toolPreview = new ToolPreview(x, y, lineWidth);
+      canvas.dispatchEvent(new Event("tool-moved"));
+    }
   });
 
   canvas.addEventListener("drawing-changed", () => {
@@ -84,6 +114,14 @@ if (ctx) {
     drawingData.forEach((line) => {
       line.display(ctx);
     });
+
+    if (toolPreview && !drawing) {
+      toolPreview.draw(ctx);
+    }
+  });
+
+  canvas.addEventListener("tool-moved", () => {
+    canvas.dispatchEvent(new Event("drawing-changed"));
   });
 }
 
