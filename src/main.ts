@@ -10,47 +10,47 @@ app.innerHTML = `<h1>${APP_NAME}</h1>
   <button id="clearButton">Clear</button>
   <button id="undoButton">Undo</button>
   <button id="redoButton">Redo</button>
-  <button id="thinButton">Thin Marker</button>
-  <button id="thickButton">Thick Marker</button>
-  <button id="customStickerButton">Create Custom Sticker</button>
+  <button id="thinButton">Fine Brush</button>
+  <button id="thickButton">Bold Brush</button>
+  <button id="customStampButton">Create Custom Stamp</button>
   <button id="exportButton">Export</button>
-  <div id="stickerButtonsContainer"></div>
+  <div id="stampButtonsContainer"></div>
 </div>`;
 
 const canvas = document.getElementById("gameCanvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
-const drawingData: (MarkerLine | Sticker)[] = [];
-const redoStack: (MarkerLine | Sticker)[] = [];
-let currentLine: MarkerLine | null = null;
-let currentSticker: Sticker | null = null;
+const drawingData: (BrushStroke | Stamp)[] = [];
+const redoStack: (BrushStroke | Stamp)[] = [];
+let currentLine: BrushStroke | null = null;
+let currentStamp: Stamp | null = null;
 let drawing = false;
-let lineWidth = 2;
-let toolPreview: ToolPreview | StickerPreview | null = null;
-let currentStickerType: string | null = null;
+let lineWidth = 1.5;
+let toolPreview: ToolPreview | StampPreview | null = null;
+let currentStampType: string | null = null;
 
-const stickers = ["🦢", "🪩", "🤍"];
-const stickerButtonsContainer = document.getElementById("stickerButtonsContainer") as HTMLDivElement;
+const stamps = ["🦭", "✨", "🧿"];
+const stampButtonsContainer = document.getElementById("stampButtonsContainer") as HTMLDivElement;
 
-stickers.forEach((sticker, index) => {
+stamps.forEach((stamp, index) => {
   const button = document.createElement("button");
-  button.textContent = `Sticker ${sticker}`;
-  button.id = `stickerButton${index}`;
+  button.textContent = `Stamp ${stamp}`;
+  button.id = `stampButton${index}`;
   button.addEventListener("click", () => {
-    selectSticker(sticker);
+    selectStamp(stamp);
     canvas.dispatchEvent(new Event("tool-moved"));
   });
-  stickerButtonsContainer.appendChild(button);
+  stampButtonsContainer.appendChild(button);
 });
 
-const selectSticker = (sticker: string) => {
-  currentStickerType = sticker;
-  Array.from(stickerButtonsContainer.children).forEach((child) => child.classList.remove("selectedTool"));
+const selectStamp = (stamp: string) => {
+  currentStampType = stamp;
+  Array.from(stampButtonsContainer.children).forEach((child) => child.classList.remove("selectedTool"));
   thinButton.classList.remove("selectedTool");
   thickButton.classList.remove("selectedTool");
-  (document.getElementById(`stickerButton${stickers.indexOf(sticker)}`) as HTMLButtonElement).classList.add("selectedTool");
+  (document.getElementById(`stampButton${stamps.indexOf(stamp)}`) as HTMLButtonElement).classList.add("selectedTool");
 };
 
-class MarkerLine {
+class BrushStroke {
   private points: { x: number; y: number }[] = [];
   private width: number;
 
@@ -76,15 +76,15 @@ class MarkerLine {
   }
 }
 
-class Sticker {
+class Stamp {
   private x: number;
   private y: number;
-  private sticker: string;
+  private stamp: string;
 
-  constructor(x: number, y: number, sticker: string) {
+  constructor(x: number, y: number, stamp: string) {
     this.x = x;
     this.y = y;
-    this.sticker = sticker;
+    this.stamp = stamp;
   }
 
   drag(x: number, y: number) {
@@ -93,8 +93,8 @@ class Sticker {
   }
 
   display(ctx: CanvasRenderingContext2D) {
-    ctx.font = "24px Arial";
-    ctx.fillText(this.sticker, this.x, this.y);
+    ctx.font = "32px Arial";
+    ctx.fillText(this.stamp, this.x, this.y);
   }
 }
 
@@ -117,20 +117,20 @@ class ToolPreview {
   draw(ctx: CanvasRenderingContext2D) {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.width / 2, 0, 2 * Math.PI);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
     ctx.fill();
   }
 }
 
-class StickerPreview {
+class StampPreview {
   private x: number;
   private y: number;
-  private sticker: string;
+  private stamp: string;
 
-  constructor(x: number, y: number, sticker: string) {
+  constructor(x: number, y: number, stamp: string) {
     this.x = x;
     this.y = y;
-    this.sticker = sticker;
+    this.stamp = stamp;
   }
 
   updatePosition(x: number, y: number) {
@@ -139,8 +139,8 @@ class StickerPreview {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    ctx.font = "24px Arial";
-    ctx.fillText(this.sticker, this.x, this.y);
+    ctx.font = "32px Arial";
+    ctx.fillText(this.stamp, this.x, this.y);
   }
 }
 
@@ -150,14 +150,14 @@ if (ctx) {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    if (currentStickerType) {
-      currentSticker = new Sticker(x, y, currentStickerType);
-      drawingData.push(currentSticker);
+    if (currentStampType) {
+      currentStamp = new Stamp(x, y, currentStampType);
+      drawingData.push(currentStamp);
       redoStack.length = 0;
       toolPreview = null;
     } else {
       drawing = true;
-      currentLine = new MarkerLine(x, y, lineWidth);
+      currentLine = new BrushStroke(x, y, lineWidth);
       drawingData.push(currentLine);
       redoStack.length = 0; // Clear redo stack when new drawing starts
       toolPreview = null;
@@ -167,7 +167,7 @@ if (ctx) {
   canvas.addEventListener("mouseup", () => {
     drawing = false;
     currentLine = null;
-    currentSticker = null;
+    currentStamp = null;
     canvas.dispatchEvent(new Event("drawing-changed"));
   });
 
@@ -179,12 +179,12 @@ if (ctx) {
     if (drawing && currentLine) {
       currentLine.drag(x, y);
       canvas.dispatchEvent(new Event("drawing-changed"));
-    } else if (currentSticker) {
-      currentSticker.drag(x, y);
+    } else if (currentStamp) {
+      currentStamp.drag(x, y);
       canvas.dispatchEvent(new Event("drawing-changed"));
     } else {
-      if (currentStickerType) {
-        toolPreview = new StickerPreview(x, y, currentStickerType);
+      if (currentStampType) {
+        toolPreview = new StampPreview(x, y, currentStampType);
       } else {
         toolPreview = new ToolPreview(x, y, lineWidth);
       }
@@ -244,34 +244,34 @@ const thinButton = document.getElementById("thinButton") as HTMLButtonElement;
 const thickButton = document.getElementById("thickButton") as HTMLButtonElement;
 
 thinButton.addEventListener("click", () => {
-  lineWidth = 2;
-  currentStickerType = null;
+  lineWidth = 1.5;
+  currentStampType = null;
   thinButton.classList.add("selectedTool");
   thickButton.classList.remove("selectedTool");
-  Array.from(stickerButtonsContainer.children).forEach((child) => child.classList.remove("selectedTool"));
+  Array.from(stampButtonsContainer.children).forEach((child) => child.classList.remove("selectedTool"));
 });
 
 thickButton.addEventListener("click", () => {
-  lineWidth = 5;
-  currentStickerType = null;
+  lineWidth = 4;
+  currentStampType = null;
   thickButton.classList.add("selectedTool");
   thinButton.classList.remove("selectedTool");
-  Array.from(stickerButtonsContainer.children).forEach((child) => child.classList.remove("selectedTool"));
+  Array.from(stampButtonsContainer.children).forEach((child) => child.classList.remove("selectedTool"));
 });
 
-const customStickerButton = document.getElementById("customStickerButton") as HTMLButtonElement;
-customStickerButton.addEventListener("click", () => {
-  const sticker = prompt("Enter your custom sticker:", "");
-  if (sticker) {
-    stickers.push(sticker);
+const customStampButton = document.getElementById("customStampButton") as HTMLButtonElement;
+customStampButton.addEventListener("click", () => {
+  const stamp = prompt("Enter your custom stamp:", "");
+  if (stamp) {
+    stamps.push(stamp);
     const button = document.createElement("button");
-    button.textContent = `Sticker ${sticker}`;
-    button.id = `stickerButton${stickers.length - 1}`;
+    button.textContent = `Stamp ${stamp}`;
+    button.id = `stampButton${stamps.length - 1}`;
     button.addEventListener("click", () => {
-      selectSticker(sticker);
+      selectStamp(stamp);
       canvas.dispatchEvent(new Event("tool-moved"));
     });
-    stickerButtonsContainer.appendChild(button);
+    stampButtonsContainer.appendChild(button);
   }
 });
 
