@@ -14,6 +14,7 @@ app.innerHTML = `<h1>${APP_NAME}</h1>
   <button id="thickButton">Bold Brush</button>
   <button id="customStampButton">Create Custom Stamp</button>
   <button id="exportButton">Export</button>
+  <input type="color" id="colorPicker" value="#000000"> Color
   <div id="stampButtonsContainer"></div>
 </div>`;
 
@@ -27,6 +28,7 @@ let drawing = false;
 let lineWidth = 1.5;
 let toolPreview: ToolPreview | StampPreview | null = null;
 let currentStampType: string | null = null;
+let currentColor = getRandomColor();
 
 const stamps = ["🦭", "✨", "🧿"];
 const stampButtonsContainer = document.getElementById("stampButtonsContainer") as HTMLDivElement;
@@ -36,6 +38,7 @@ stamps.forEach((stamp, index) => {
   button.textContent = `Stamp ${stamp}`;
   button.id = `stampButton${index}`;
   button.addEventListener("click", () => {
+    currentColor = getRandomColor();
     selectStamp(stamp);
     canvas.dispatchEvent(new Event("tool-moved"));
   });
@@ -53,10 +56,12 @@ const selectStamp = (stamp: string) => {
 class BrushStroke {
   private points: { x: number; y: number }[] = [];
   private width: number;
+  private color: string;
 
-  constructor(x: number, y: number, width: number) {
+  constructor(x: number, y: number, width: number, color: string) {
     this.points.push({ x, y });
     this.width = width;
+    this.color = color;
   }
 
   drag(x: number, y: number) {
@@ -67,6 +72,7 @@ class BrushStroke {
     if (this.points.length > 0) {
       ctx.beginPath();
       ctx.lineWidth = this.width;
+      ctx.strokeStyle = this.color;
       ctx.moveTo(this.points[0].x, this.points[0].y);
       for (let i = 1; i < this.points.length; i++) {
         ctx.lineTo(this.points[i].x, this.points[i].y);
@@ -80,11 +86,13 @@ class Stamp {
   private x: number;
   private y: number;
   private stamp: string;
+  private color: string;
 
-  constructor(x: number, y: number, stamp: string) {
+  constructor(x: number, y: number, stamp: string, color: string) {
     this.x = x;
     this.y = y;
     this.stamp = stamp;
+    this.color = color;
   }
 
   drag(x: number, y: number) {
@@ -93,6 +101,7 @@ class Stamp {
   }
 
   display(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = this.color;
     ctx.font = "32px Arial";
     ctx.fillText(this.stamp, this.x, this.y);
   }
@@ -102,11 +111,13 @@ class ToolPreview {
   private x: number;
   private y: number;
   private width: number;
+  private color: string;
 
-  constructor(x: number, y: number, width: number) {
+  constructor(x: number, y: number, width: number, color: string) {
     this.x = x;
     this.y = y;
     this.width = width;
+    this.color = color;
   }
 
   updatePosition(x: number, y: number) {
@@ -117,7 +128,7 @@ class ToolPreview {
   draw(ctx: CanvasRenderingContext2D) {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.width / 2, 0, 2 * Math.PI);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.fillStyle = this.color;
     ctx.fill();
   }
 }
@@ -126,11 +137,13 @@ class StampPreview {
   private x: number;
   private y: number;
   private stamp: string;
+  private color: string;
 
-  constructor(x: number, y: number, stamp: string) {
+  constructor(x: number, y: number, stamp: string, color: string) {
     this.x = x;
     this.y = y;
     this.stamp = stamp;
+    this.color = color;
   }
 
   updatePosition(x: number, y: number) {
@@ -139,6 +152,7 @@ class StampPreview {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = this.color;
     ctx.font = "32px Arial";
     ctx.fillText(this.stamp, this.x, this.y);
   }
@@ -151,13 +165,13 @@ if (ctx) {
     const y = event.clientY - rect.top;
 
     if (currentStampType) {
-      currentStamp = new Stamp(x, y, currentStampType);
+      currentStamp = new Stamp(x, y, currentStampType, currentColor);
       drawingData.push(currentStamp);
       redoStack.length = 0;
       toolPreview = null;
     } else {
       drawing = true;
-      currentLine = new BrushStroke(x, y, lineWidth);
+      currentLine = new BrushStroke(x, y, lineWidth, currentColor);
       drawingData.push(currentLine);
       redoStack.length = 0; // Clear redo stack when new drawing starts
       toolPreview = null;
@@ -184,9 +198,9 @@ if (ctx) {
       canvas.dispatchEvent(new Event("drawing-changed"));
     } else {
       if (currentStampType) {
-        toolPreview = new StampPreview(x, y, currentStampType);
+        toolPreview = new StampPreview(x, y, currentStampType, currentColor);
       } else {
-        toolPreview = new ToolPreview(x, y, lineWidth);
+        toolPreview = new ToolPreview(x, y, lineWidth, currentColor);
       }
       canvas.dispatchEvent(new Event("tool-moved"));
     }
@@ -245,18 +259,22 @@ const thickButton = document.getElementById("thickButton") as HTMLButtonElement;
 
 thinButton.addEventListener("click", () => {
   lineWidth = 1.5;
+  currentColor = getRandomColor();
   currentStampType = null;
   thinButton.classList.add("selectedTool");
   thickButton.classList.remove("selectedTool");
   Array.from(stampButtonsContainer.children).forEach((child) => child.classList.remove("selectedTool"));
+  canvas.dispatchEvent(new Event("tool-moved"));
 });
 
 thickButton.addEventListener("click", () => {
   lineWidth = 4;
+  currentColor = getRandomColor();
   currentStampType = null;
   thickButton.classList.add("selectedTool");
   thinButton.classList.remove("selectedTool");
   Array.from(stampButtonsContainer.children).forEach((child) => child.classList.remove("selectedTool"));
+  canvas.dispatchEvent(new Event("tool-moved"));
 });
 
 const customStampButton = document.getElementById("customStampButton") as HTMLButtonElement;
@@ -268,11 +286,18 @@ customStampButton.addEventListener("click", () => {
     button.textContent = `Stamp ${stamp}`;
     button.id = `stampButton${stamps.length - 1}`;
     button.addEventListener("click", () => {
+      currentColor = getRandomColor();
       selectStamp(stamp);
       canvas.dispatchEvent(new Event("tool-moved"));
     });
     stampButtonsContainer.appendChild(button);
   }
+});
+
+const colorPicker = document.getElementById("colorPicker") as HTMLInputElement;
+colorPicker.addEventListener("input", (event) => {
+  currentColor = (event.target as HTMLInputElement).value;
+  canvas.dispatchEvent(new Event("tool-moved"));
 });
 
 const exportButton = document.getElementById("exportButton") as HTMLButtonElement;
@@ -294,3 +319,12 @@ exportButton.addEventListener("click", () => {
     anchor.click();
   }
 });
+
+function getRandomColor() {
+  const letters = "0123456789ABCDEF";
+  let color = "#";
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
