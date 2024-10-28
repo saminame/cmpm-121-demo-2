@@ -13,6 +13,7 @@ app.innerHTML = `<h1>${APP_NAME}</h1>
   <button id="thinButton">Thin Marker</button>
   <button id="thickButton">Thick Marker</button>
   <button id="customStickerButton">Create Custom Sticker</button>
+  <button id="exportButton">Export</button>
   <div id="stickerButtonsContainer"></div>
 </div>`;
 
@@ -271,5 +272,25 @@ customStickerButton.addEventListener("click", () => {
       canvas.dispatchEvent(new Event("tool-moved"));
     });
     stickerButtonsContainer.appendChild(button);
+  }
+});
+
+const exportButton = document.getElementById("exportButton") as HTMLButtonElement;
+exportButton.addEventListener("click", () => {
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1024;
+  exportCanvas.height = 1024;
+  const exportCtx = exportCanvas.getContext("2d");
+
+  if (exportCtx) {
+    exportCtx.scale(4, 4);
+    drawingData.forEach((item) => {
+      item.display(exportCtx);
+    });
+
+    const anchor = document.createElement("a");
+    anchor.href = exportCanvas.toDataURL("image/png");
+    anchor.download = "sketchpad.png";
+    anchor.click();
   }
 });
